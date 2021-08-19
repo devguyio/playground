@@ -32,7 +32,7 @@ import (
 type TargetLister struct {
 }
 
-func (t TargetLister) ListProbeTargets(ctx context.Context, ingress *v1alpha1.Ingress) ([]status.ProbeTarget, error) {
+func (t TargetLister) ListProbeTargets(ctx context.Context, ingress interface{}) ([]status.ProbeTarget, error) {
 	u, _ := url.Parse("http://www.google.com")
 	uls := []*url.URL{u}
 
@@ -61,14 +61,20 @@ func main() {
 	statusProber := status.NewProber(
 		logger.Named("status-manager"),
 		TargetLister{},
-		func(ing *v1alpha1.Ingress) {
+		func(ing interface{}) {
 			logger.Info("Ready callback triggered.")
 		})
 	in := v1alpha1.Ingress{}
 	d := make(chan struct{})
 	statusProber.Start(d)
 	time.Sleep(3 * time.Second)
-	statusProber.IsReady(ctx, &in)
-	time.Sleep(3 * time.Second)
+	for i := 0; i < 3; i++ {
+		r, _ := statusProber.IsReady(ctx, &in)
+		logger.Infof("Ready: %t", r)
+		if r {
+			break
+		}
+		time.Sleep(3 * time.Second)
+	}
 
 }
